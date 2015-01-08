@@ -2,7 +2,7 @@
 Hyper-parameter tuning
 
 Usage:
-  tune [--max=<max_evals>] [--mongo=<host>] <xp_dir>
+  tune [--max=<max_evals>] [--mongo=<host>] <experiment.py>
   tune -h | --help
   tune --version
 
@@ -19,9 +19,8 @@ arguments = docopt(__doc__, version='')
 
 # --- load experiment objective function and search space ---------------------
 import sys
-experiment_dir = arguments['<xp_dir>']
-sys.path.append(experiment_dir)
-from experiment import xp_space, xp_objective, xp_name
+experiment_py = arguments['<experiment.py>']
+execfile(experiment_py)
 
 # --- load experiment trials --------------------------------------------------
 host = arguments['--mongo']
@@ -33,8 +32,7 @@ if host is None:
 else:
     from hyperopt.mongoexp import MongoTrials
     trials = MongoTrials(
-        'mongo://{host}/{xp_name}/jobs'.format(host=host, xp_name=xp_name),
-        workdir=experiment_dir)
+        'mongo://{host}/{xp_name}/jobs'.format(host=host, xp_name=xp_name))
 
 # --- run experiment ----------------------------------------------------------
 max_evals = int(arguments['--max'])
