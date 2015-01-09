@@ -29,9 +29,8 @@ xp_space = {
 def xp_objective(parameters):
 
     features_param = parameters['features']
-    algorithm_param = parameters['algorithms']
+    algorithm_param = parameters['algorithm']
     algorithm_param['n_components'] = int(algorithm_param['n_components'])
-    algorithm_param['coefs'] = int(algorithm_param['coefs'])
 
     from pyannote.features.audio.yaafe import \
         YaafeZCR, YaafeMFCC, YaafeCompound
