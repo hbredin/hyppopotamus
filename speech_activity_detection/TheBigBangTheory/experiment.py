@@ -1,28 +1,37 @@
 
 # --- define unique name ------------------------------------------------------
-xp_name = 'tbbt_sad'
+xp_name = 'sad'
 
 # --- define hyper-parameters search space ------------------------------------
 
 from hyperopt import hp
 trueOrFalse = [True, False]
-xp_space = [
-    hp.choice('e', trueOrFalse),
-    hp.quniform('coefs', 11, 15, 1),
-    hp.choice('De', trueOrFalse),
-    hp.choice('DDe', trueOrFalse),
-    hp.choice('D', trueOrFalse),
-    hp.choice('DD', trueOrFalse),
-    2 ** hp.quniform('n_components', 0, 10, 1),  # from 1 to 1024 gaussians
-    hp.choice('calibration', [None, 'isotonic', 'naive_bayes']),
-    hp.choice('equal_priors', trueOrFalse)
-]
+xp_space = {
+    'features': {
+        'e': hp.choice('e', trueOrFalse),
+        'De': hp.choice('De', trueOrFalse),
+        'DDe': hp.choice('DDe', trueOrFalse),
+        'coefs': hp.quniform('coefs', 11, 15, 2),
+        'D': hp.choice('D', trueOrFalse),
+        'DD': hp.choice('DD', trueOrFalse),
+    },
+    'algorithm': {
+        'n_components': 2 ** hp.quniform('n_components', 0, 10, 1),
+        'calibration': hp.choice('calibration',
+                                 [None, 'isotonic', 'naive_bayes']),
+        'equal_priors': hp.choice('equal_priors', trueOrFalse)
+    }
+}
 
 
 # --- define experiment objective function ------------------------------------
 
-def xp_objective(args):
-    e, coefs, De, DDe, D, DD, n_components, calibration, equal_priors = args
+def xp_objective(parameters):
+
+    features_param = parameters['features']
+    algorithm_param = parameters['algorithms']
+    algorithm_param['n_components'] = int(algorithm_param['n_components'])
+    algorithm_param['coefs'] = int(algorithm_param['coefs'])
 
     from pyannote.features.audio.yaafe import \
         YaafeZCR, YaafeMFCC, YaafeCompound
@@ -34,9 +43,6 @@ def xp_objective(args):
     from hyperopt import STATUS_OK
     import numpy as np
     import simplejson as json
-
-    n_components = int(n_components)
-    coefs = int(coefs)
 
     dataset = TheBigBangTheory('/vol/corpora4/tvseries/tvd')
     episodes = dataset.episodes[:6]
@@ -67,7 +73,7 @@ def xp_objective(args):
     # --- feature extraction --------------------------------------------------
 
     zcr = YaafeZCR()
-    mfcc = YaafeMFCC(e=e, coefs=coefs, De=De, DDe=DDe, D=D, DD=DD)
+    mfcc = YaafeMFCC(**features_param)
     compound = YaafeCompound(
         [zcr, mfcc], sample_rate=16000, block_size=512, step_size=256)
 
@@ -88,9 +94,7 @@ def xp_objective(args):
         segmenter = GMMSegmentation(
             n_jobs=1,  # n_jobs > 1 will fail (not sure why)
             n_iter=20, lbg=True,
-            n_components=n_components,
-            calibration=calibration,
-            equal_priors=equal_priors)
+            **algorithm_param)
 
         segmenter.fit(
             [features[episode] for episode in trn],
@@ -112,7 +116,7 @@ def xp_objective(args):
     loss_variance = np.var([x['loss'] for x in attachments.values()])
 
     # dictionary of key-value pairs whose keys are short strings (str(episode))
-    # and whose values are potentially long strings (json.dumps) 
+    # and whose values are potentially long strings (json.dumps)
     attachments = {str(episode): json.dumps(attachment, for_json=True)
                    for episode, attachment in attachments.iteritems()}
 
