@@ -71,8 +71,8 @@ def xp_objective(parameters):
 
     # --- feature extraction --------------------------------------------------
 
-    zcr = YaafeZCR()
-    mfcc = YaafeMFCC(**features_param)
+    zcr = YaafeZCR(sample_rate=16000, block_size=512, step_size=256)
+    mfcc = YaafeMFCC(sample_rate=16000, block_size=512, step_size=256, **features_param)
     compound = YaafeCompound(
         [zcr, mfcc], sample_rate=16000, block_size=512, step_size=256)
 
