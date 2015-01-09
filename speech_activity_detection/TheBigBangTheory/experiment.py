@@ -1,7 +1,6 @@
 
 # --- define unique name ------------------------------------------------------
 xp_name = 'tbbt_sad'
-# xp_name = 'tune_sad'
 
 # --- define hyper-parameters search space ------------------------------------
 
@@ -32,7 +31,9 @@ def xp_objective(args):
     from sklearn.cross_validation import LeaveOneOut
     from tvd import TheBigBangTheory
 
-    print args
+    from hyperopt import STATUS_OK
+    import numpy as np
+    import simplejson as json
 
     n_components = int(n_components)
     coefs = int(coefs)
@@ -78,13 +79,15 @@ def xp_objective(args):
     # --- speech activity detection
 
     ier = IdentificationErrorRate(collar=0.100)
+    attachments = {}
 
     for trn, tst in LeaveOneOut(n_episodes):
 
         tst = tst[0]
 
         segmenter = GMMSegmentation(
-            n_jobs=2, n_iter=20, lbg=True,  # 2x faster, 5x faster, much faster
+            n_jobs=1,  # n_jobs > 1 will fail (not sure why)
+            n_iter=20, lbg=True,
             n_components=n_components,
             calibration=calibration,
             equal_priors=equal_priors)
@@ -96,11 +99,24 @@ def xp_objective(args):
 
         hypothesis = segmenter.predict(features[tst])
         reference = groundtruth[tst]
-        res = ier(reference, hypothesis)
+        loss = ier(reference, hypothesis)
 
-        print episodes[tst], res
+        # precomputed loss and hypothesis for current episode
+        # will be stored in trial database for later use.
+        attachments[episodes[tst]] = {
+            'loss': loss,
+            'hypothesis': hypothesis}
 
-    res = abs(ier)
-    print '==>', res
+    status = STATUS_OK
+    loss = abs(ier)
+    loss_variance = np.var([x['loss'] for x in attachments.values()])
 
-    return abs(ier)
+    # dictionary of key-value pairs whose keys are short strings (str(episode))
+    # and whose values are potentially long strings (json.dumps) 
+    attachments = {str(episode): json.dumps(attachment, for_json=True)
+                   for episode, attachment in attachments.iteritems()}
+
+    return {'status': status,
+            'loss': loss,
+            'loss_variance': loss_variance,
+            'attachments': attachments}
