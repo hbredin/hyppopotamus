@@ -32,8 +32,7 @@ def xp_objective(parameters):
     algorithm_param = parameters['algorithm']
     algorithm_param['n_components'] = int(algorithm_param['n_components'])
 
-    from pyannote.features.audio.yaafe import \
-        YaafeZCR, YaafeMFCC, YaafeCompound
+    from pyannote.features.audio.yaafe import YaafeMFCC
     from pyannote.metrics.identification import IdentificationErrorRate
     from pyannote.algorithms.segmentation.hmm import GMMSegmentation
     from pyannote.parser import SRTParser
@@ -91,7 +90,7 @@ def xp_objective(parameters):
         aligner = TFIDFAlignment(tfidf, adapt=True)
 
         subtitles = SRTParser(split=True, duration=True).read(
-            dataset.path_to_subtitles(episode, language='en'))
+            dataset.path_to_subtitles(episode, language='en'))()
 
         transcripts = dataset.get_resource('transcript', episode)
 
@@ -122,14 +121,11 @@ def xp_objective(parameters):
 
     # --- feature extraction --------------------------------------------------
 
-    zcr = YaafeZCR(sample_rate=16000, block_size=512, step_size=256)
     mfcc = YaafeMFCC(
         sample_rate=16000, block_size=512, step_size=256, **features_param)
-    compound = YaafeCompound(
-        [zcr, mfcc], sample_rate=16000, block_size=512, step_size=256)
-
+    
     features = [
-        compound(dataset.path_to_audio(episode, language='en'))
+        mfcc(dataset.path_to_audio(episode, language='en'))
         for episode in episodes
     ]
 
