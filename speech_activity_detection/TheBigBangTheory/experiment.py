@@ -72,7 +72,8 @@ def xp_objective(parameters):
     # --- feature extraction --------------------------------------------------
 
     zcr = YaafeZCR(sample_rate=16000, block_size=512, step_size=256)
-    mfcc = YaafeMFCC(sample_rate=16000, block_size=512, step_size=256, **features_param)
+    mfcc = YaafeMFCC(sample_rate=16000, block_size=512, step_size=256,
+                     **features_param)
     compound = YaafeCompound(
         [zcr, mfcc], sample_rate=16000, block_size=512, step_size=256)
 
@@ -123,3 +124,20 @@ def xp_objective(parameters):
             'loss': loss,
             'loss_variance': loss_variance,
             'attachments': attachments}
+
+
+def xp_dump(trial_attachments, output_dir):
+
+    import simplejson as json
+    from pyannote.core.json import object_hook
+    from pyannote.parser import REPEREParser
+
+    attachments = {
+        key: json.loads(value, object_hook=object_hook)
+        for key, value in trial_attachments.iteritems()}
+
+    for episode in attachments:
+        path = '{output_dir}/{episode:s}.repere'.format(
+            output_dir=output_dir, episode=episode)
+        with open(path, 'w') as f:
+            REPEREParser().write(attachments[episode]['hypothesis'], f=f)
