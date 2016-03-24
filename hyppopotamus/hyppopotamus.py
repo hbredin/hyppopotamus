@@ -10,22 +10,20 @@ Usage:
 General options:
 
   <experiment.py>           Path to Hyppopotamus experiment file.
+  --mongo=<host>            Parallel search using this MongoDB host.
+  --pickle=<file.pkl>       Sequential search using this pickled trial file.
+
   -h --help                 Show this screen.
   --version                 Show version.
   --verbose                 Show processing progress.
 
 Perform hyper-parameters tuning (tune):
 
-  --mongo=<host>            Parallel search using this MongoDB host.
-  --pickle=<file.pkl>       Sequential search using this pickled trial file.
   --max-evals=<number>      Allow up to this many evaluations [default: 100].
   --work-dir=<workdir>      Add <workdir> to set of parameters.
   --luigi=<host>            Add <luigi_host> to set of parameters.
 
 Get current best set of hyper-parameters (best):
-
-  --mongo=<host>            Parallel search using this MongoDB host.
-  --pickle=<file.pkl>       Sequential search using this pickled trial file.
 
 """
 
@@ -40,13 +38,10 @@ from docopt import docopt
 from pprint import pprint
 
 
-def tune(experiment_py,
+def tune(xp_name, xp_space, xp_objective,,
          max_evals=100,
          mongo_host=None, trials_pkl=None,
          work_dir=None, luigi_host=None):
-
-    # --- load experiment objective function and search space ----------------
-    execfile(experiment_py)
 
     # --- load experiment trials ---------------------------------------------
     if mongo_host is None:
@@ -87,10 +82,7 @@ def tune(experiment_py,
             pickle.dump(trials, fp)
 
 
-def best(experiment_py, mongo_host=None, trials_pkl=None):
-
-    # --- load experiment objective function and search space ----------------
-    execfile(experiment_py)
+def best(xp_name, xp_space, mongo_host=None, trials_pkl=None):
 
     # --- load experiment trials ---------------------------------------------
     if trials_pkl is not None:
@@ -117,7 +109,10 @@ if __name__ == '__main__':
     # parse command line arguments
     arguments = docopt(__doc__)
 
+    # --- load experiment objective function and search space ----------------
     experiment_py = arguments['<experiment.py>']
+    execfile(experiment_py)
+
     mongo_host = arguments['--mongo']
     trials_pkl = arguments['--pickle']
 
@@ -127,7 +122,7 @@ if __name__ == '__main__':
         work_dir = arguments['--work-dir']
         luigi_host = arguments['--luigi']
 
-        tune(experiment_py,
+        tune(xp_name, xp_space, xp_objective,
              max_evals=100,
              mongo_host=mongo_host,
              trials_pkl=trials_pkl,
@@ -136,6 +131,6 @@ if __name__ == '__main__':
 
     if arguments['best']:
 
-        best(experiment_py,
+        best(xp_name, xp_space,
              mongo_host=mongo_host,
              trials_pkl=trials_pkl)
