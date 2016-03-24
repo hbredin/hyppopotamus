@@ -38,7 +38,7 @@ from docopt import docopt
 from pprint import pprint
 
 
-def tune(xp_name, xp_space, xp_objective,,
+def tune(xp_name, xp_space, xp_objective,
          max_evals=100,
          mongo_host=None, trials_pkl=None,
          work_dir=None, luigi_host=None):
