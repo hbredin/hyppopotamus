@@ -45,11 +45,11 @@ def tune(xp_name, xp_space, xp_objective,
 
     # --- load experiment trials ---------------------------------------------
     if mongo_host is None:
-        if trials_pkl is None:
-            trials = hyperopt.Trials()
-        else:
+        try:
             with open(trials_pkl, 'r') as fp:
                 trials = pickle.load(fp)
+        except:
+            trials = hyperopt.Trials()
 
     else:
         TEMPLATE = 'mongo://{host}/{xp_name}/jobs'
