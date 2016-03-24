@@ -5,15 +5,20 @@
 #### Step 1 - Run MongoDB
 
 ```
-$ mongod -v -f ~/mongo/mongodb.conf
+$ mongod -v -f mongodb.conf
 ```
 
 See file `mongodb.conf` for an example.
-
 Below, we assume that Mongo is ran on host `$MONGO_HOST`.
 
 
-#### Step 2 - Write experiment 
+#### Step 2 - Run Luigi server
+
+```
+luigid --background --pidfile <PATH_TO_PIDFILE> --logdir <PATH_TO_LOGDIR> --state-path <PATH_TO_STATEFILE>
+```
+
+#### Step 2 - Write experiment
 
 See file `test/experiment.py` for an example on optimizing `sin(x)`.
 
