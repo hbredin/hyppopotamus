@@ -116,7 +116,7 @@ if __name__ == '__main__':
         luigi_host = arguments['--luigi']
 
         tune(xp_name, xp_space, xp_objective,
-             max_evals=100,
+             max_evals=max_evals,
              mongo_host=mongo_host,
              trials_pkl=trials_pkl,
              work_dir=work_dir,
