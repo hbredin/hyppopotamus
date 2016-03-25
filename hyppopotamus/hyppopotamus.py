@@ -37,7 +37,6 @@ from hyperopt import fmin, tpe, space_eval
 from docopt import docopt
 from pprint import pprint
 
-
 def tune(xp_name, xp_space, xp_objective,
          max_evals=100,
          mongo_host=None, trials_pkl=None,
@@ -56,14 +55,8 @@ def tune(xp_name, xp_space, xp_objective,
         url = TEMPLATE.format(host=mongo_host, xp_name=xp_name)
         trials = hyperopt.mongoexp.MongoTrials(url)
 
-    # --- append work_dir to every new set of parameters ----------------------
-    if work_dir is not None:
-        xp_objective = functools.partial(
-            xp_objective, work_dir=work_dir)
-
-    if luigi_host is not None:
-        xp_objective = functools.partial(
-            xp_objective, luigi_host=luigi_host)
+    xp_objective = functools.partial(
+        xp_objective, luigi_host=luigi_host, work_dir=work_dir)
 
     # --- actual hyper-parameters optimization --------------------------------
     best = hyperopt.fmin(
