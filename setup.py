@@ -36,6 +36,9 @@ setup(
     packages=find_packages(),
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
+    install_requires=[
+        'pymongo==2.9.3',
+    ],
     # PyPI
     name='hyppopotamus',
     description=('hyperopt + SGE + luigi = <3'),
