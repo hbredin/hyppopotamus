@@ -3,7 +3,8 @@
 
 Usage:
   hyppopotamus tune [options] (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
-  hyppopotamus best [options] (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
+  hyppopotamus best (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
+  hyppopotamus reset (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
   hyppopotamus (-h | --help)
   hyppopotamus --version
 
@@ -23,8 +24,6 @@ Perform hyper-parameters tuning (tune):
   --work-dir=<workdir>      Add <workdir> to set of parameters.
   --luigi=<host>            Add <luigi_host> to set of parameters.
 
-Get current best set of hyper-parameters (best):
-
 """
 
 from __future__ import print_function
@@ -33,6 +32,7 @@ import pickle
 import functools
 import hyperopt
 import hyperopt.mongoexp
+import pymongo
 from hyperopt import fmin, tpe, space_eval
 from docopt import docopt
 from pprint import pprint
@@ -97,6 +97,20 @@ def best(xp_name, xp_space, mongo_host=None, trials_pkl=None):
     pprint(space_eval(xp_space, trials.argmin))
 
 
+def reset(xp_name, mongo_host=None, trials_pkl=None):
+
+    # create empty trials and save it to file
+    if trials_pkl is not None:
+        trials = hyperopt.Trials()
+        with open(trials_pkl, 'w') as fp:
+            pickle.dump(trials.fp)
+
+    # empty mongo database
+    if mongo_host is not None:
+        client = pymongo.MongoClient(host=mongo_host, port=None)
+        client.drop_database(xp_name)
+        client.close()
+
 if __name__ == '__main__':
 
     # parse command line arguments
@@ -123,7 +137,9 @@ if __name__ == '__main__':
              luigi_host=luigi_host)
 
     if arguments['best']:
-
         best(xp_name, xp_space,
              mongo_host=mongo_host,
              trials_pkl=trials_pkl)
+
+    if arguments['reset']:
+        reset(xp_name, mongo_host=mongo_host, trials_pkl=trials_pkl)
