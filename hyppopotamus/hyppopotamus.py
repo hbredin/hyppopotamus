@@ -4,6 +4,7 @@
 Usage:
   hyppopotamus tune [options] (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
   hyppopotamus best (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
+  hyppopotamus plot (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
   hyppopotamus reset (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
   hyppopotamus (-h | --help)
   hyppopotamus --version
@@ -34,8 +35,11 @@ import hyperopt
 import hyperopt.mongoexp
 import pymongo
 from hyperopt import fmin, tpe, space_eval
+from hyperopt import STATUS_OK, STATUS_FAIL, STATUS_NEW, STATUS_RUNNING
 from docopt import docopt
 from pprint import pprint
+
+
 
 def tune(xp_name, xp_space, xp_objective,
          max_evals=100,
@@ -111,6 +115,56 @@ def reset(xp_name, mongo_host=None, trials_pkl=None):
         client.drop_database(xp_name)
         client.close()
 
+
+def plot(xp_name, xp_space, mongo_host=None, trials_pkl=None):
+
+    colors = {
+        STATUS_NEW: 'k',
+        STATUS_RUNNING: 'g',
+        STATUS_OK: 'b',
+        STATUS_FAIL: 'r'}
+
+    # --- load experiment trials ---------------------------------------------
+    if trials_pkl is not None:
+        with open(trials_pkl, 'r') as fp:
+            trials = pickle.load(fp)
+
+    if mongo_host is not None:
+        TEMPLATE = 'mongo://{host}/{xp_name}/jobs'
+        url = TEMPLATE.format(host=mongo_host, xp_name=xp_name)
+        trials = hyperopt.mongoexp.MongoTrials(url)
+
+    # get list of hyper-parameters from first trial
+    trial = trials.trials[0]
+    params = {name: [] for name in trial['misc']['vals']}
+
+    status = []
+    loss = []
+    loss_variance = []
+    true_loss = []
+    true_loss_variance = []
+
+    for t, trial in enumerate(trials.trials):
+
+        result = trial['result']
+        status.append(result.get('status'))
+        loss.append(result.get('loss', None))
+        true_loss.append(result.get('true_loss', None))
+        loss_variance.append(result.get('loss_variance', None))
+        true_loss_variance.append(result.get('true_loss_variance', None))
+
+        trial_params = {key: value[0] for key, value in trial['misc']['vals'].items()}
+        trial_params = space_eval(xp_space, trial_params)
+
+        for name in params:
+            param_value = trial_params[name]
+            params[name].append(param_value)
+
+    pprint(loss)
+    pprint(true_loss)
+    pprint(params)
+
+
 if __name__ == '__main__':
 
     # parse command line arguments
@@ -143,3 +197,8 @@ if __name__ == '__main__':
 
     if arguments['reset']:
         reset(xp_name, mongo_host=mongo_host, trials_pkl=trials_pkl)
+
+    if arguments['plot']:
+        plot(xp_name, xp_space,
+             mongo_host=mongo_host,
+             trials_pkl=trials_pkl)
