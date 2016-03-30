@@ -37,7 +37,9 @@ setup(
     version=versioneer.get_version(),
     cmdclass=versioneer.get_cmdclass(),
     install_requires=[
-        'pymongo==2.9.3',
+        'docopt >= 0.6.2',
+        'pymongo == 2.9.3',
+        'hyperopt == 0.0.3.dev0'
     ],
     # PyPI
     name='hyppopotamus',
