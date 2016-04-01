@@ -2,8 +2,8 @@
 
 
 Usage:
-  hyppopotamus tune  (--mongo=<host> | --pickle=<file.pkl) --work-dir=<workdir> --luigi=<host> --max-evals=<number> <experiment.py>
-  hyppopotamus rerun (--mongo=<host> | --pickle=<file.pkl) --work-dir=<workdir> --luigi=<host> <experiment.py>
+  hyppopotamus tune  (--mongo=<host> | --pickle=<file.pkl) --work-dir=<workdir> [--luigi=<host>] [--max-evals=<number>] <experiment.py>
+  hyppopotamus rerun (--mongo=<host> | --pickle=<file.pkl) --work-dir=<workdir> [--luigi=<host>] <experiment.py>
   hyppopotamus best  (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
   hyppopotamus plot  (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
   hyppopotamus reset (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
