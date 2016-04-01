@@ -2,9 +2,10 @@
 
 
 Usage:
-  hyppopotamus tune [options] (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
-  hyppopotamus best (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
-  hyppopotamus plot (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
+  hyppopotamus tune  (--mongo=<host> | --pickle=<file.pkl) --work-dir=<workdir> --luigi=<host> --max-evals=<number> <experiment.py>
+  hyppopotamus rerun (--mongo=<host> | --pickle=<file.pkl) --work-dir=<workdir> --luigi=<host> <experiment.py>
+  hyppopotamus best  (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
+  hyppopotamus plot  (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
   hyppopotamus reset (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
   hyppopotamus (-h | --help)
   hyppopotamus --version
@@ -38,7 +39,6 @@ from hyperopt import fmin, tpe, space_eval
 from hyperopt import STATUS_OK, STATUS_FAIL, STATUS_NEW, STATUS_RUNNING
 from docopt import docopt
 from pprint import pprint
-
 
 
 def tune(xp_name, xp_space, xp_objective,
@@ -99,6 +99,29 @@ def best(xp_name, xp_space, mongo_host=None, trials_pkl=None):
 
     print('#> BEST PARAMETERS')
     pprint(space_eval(xp_space, trials.argmin))
+
+
+def rerun(xp_name, xp_space, xp_objective,
+          mongo_host=None, trials_pkl=None,
+          work_dir=None, luigi_host=None):
+
+    # --- load experiment trials ---------------------------------------------
+    if trials_pkl is not None:
+        with open(trials_pkl, 'r') as fp:
+            trials = pickle.load(fp)
+
+    if mongo_host is not None:
+        TEMPLATE = 'mongo://{host}/{xp_name}/jobs'
+        url = TEMPLATE.format(host=mongo_host, xp_name=xp_name)
+        trials = hyperopt.mongoexp.MongoTrials(url)
+
+    trial = trials.best_trial
+    params = {key: value[0] for key, value in trial['misc']['vals'].items()}
+    params = space_eval(xp_space, params)
+
+    pprint(params)
+
+    xp_objective(params, luigi_host=luigi_host, work_dir=work_dir)
 
 
 def reset(xp_name, mongo_host=None, trials_pkl=None):
@@ -189,6 +212,17 @@ if __name__ == '__main__':
              trials_pkl=trials_pkl,
              work_dir=work_dir,
              luigi_host=luigi_host)
+
+    if arguments['rerun']:
+
+        work_dir = arguments['--work-dir']
+        luigi_host = arguments['--luigi']
+
+        rerun(xp_name, xp_space, xp_objective,
+              mongo_host=mongo_host,
+              trials_pkl=trials_pkl,
+              work_dir=work_dir,
+              luigi_host=luigi_host)
 
     if arguments['best']:
         best(xp_name, xp_space,
