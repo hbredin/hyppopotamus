@@ -196,11 +196,23 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
     # --- loss & true loss ----------------------------------------------------
     fig, ax = plt.subplots()
 
-    LABEL = '{subset} ({loss:.2f})'
+    LABEL = '{subset} ({loss:.3f})'
     label = LABEL.format(subset='dev', loss=np.min(loss))
     ax.plot(np.minimum.accumulate(loss), label=label)
-    label = LABEL.format(subset='test', loss=np.min(true_loss))
-    ax.plot(np.minimum.accumulate(true_loss), label=label)
+
+    # compute (true) true loss, as the performance on the test
+    # by the best performing system on the dev set
+    _true_loss = []
+    best_loss = np.inf
+    for i, _loss in enumerate(loss):
+        if _loss < best_loss:
+            _true_loss.append(true_loss[i])
+            best_loss = _loss
+        else:
+            _true_loss.append(_true_loss[-1])
+
+    label = LABEL.format(subset='test', loss=true_loss[np.argmin(loss)])
+    ax.plot(_true_loss, label=label)
 
     # axes, legend and title
     ax.set_ylim(y_min, y_max)
