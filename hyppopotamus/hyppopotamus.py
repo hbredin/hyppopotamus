@@ -5,7 +5,7 @@ Usage:
   hyppopotamus tune  (--mongo=<host> | --pickle=<file.pkl) --work-dir=<workdir> [--luigi=<host>] [--max-evals=<number>] <experiment.py>
   hyppopotamus rerun (--mongo=<host> | --pickle=<file.pkl) --work-dir=<workdir> [--luigi=<host>] <experiment.py>
   hyppopotamus best  (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
-  hyppopotamus plot  (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
+  hyppopotamus plot  [options] (--mongo=<host> | --pickle=<file.pkl) <experiment.py> <output_dir>
   hyppopotamus reset (--mongo=<host> | --pickle=<file.pkl) <experiment.py>
   hyppopotamus (-h | --help)
   hyppopotamus --version
@@ -26,6 +26,10 @@ Perform hyper-parameters tuning (tune):
   --work-dir=<workdir>      Add <workdir> to set of parameters.
   --luigi=<host>            Add <luigi_host> to set of parameters.
 
+Plotting (plot):
+  --y-min=<min>             [default: 0]
+  --y-max=<max>             [default: 1]
+
 """
 
 from __future__ import print_function
@@ -39,6 +43,8 @@ from hyperopt import fmin, tpe, space_eval
 from hyperopt import STATUS_OK, STATUS_FAIL, STATUS_NEW, STATUS_RUNNING
 from docopt import docopt
 from pprint import pprint
+import numpy as np
+import sys
 
 
 def tune(xp_name, xp_space, xp_objective,
@@ -139,7 +145,11 @@ def reset(xp_name, mongo_host=None, trials_pkl=None):
         client.close()
 
 
-def plot(xp_name, xp_space, mongo_host=None, trials_pkl=None):
+def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, trials_pkl=None):
+
+    import matplotlib
+    matplotlib.use('pdf')
+    from matplotlib import pyplot as plt
 
     colors = {
         STATUS_NEW: 'k',
@@ -171,10 +181,10 @@ def plot(xp_name, xp_space, mongo_host=None, trials_pkl=None):
 
         result = trial['result']
         status.append(result.get('status'))
-        loss.append(result.get('loss', None))
-        true_loss.append(result.get('true_loss', None))
-        loss_variance.append(result.get('loss_variance', None))
-        true_loss_variance.append(result.get('true_loss_variance', None))
+        loss.append(result.get('loss', np.inf))
+        true_loss.append(result.get('true_loss', np.inf))
+        loss_variance.append(result.get('loss_variance', np.inf))
+        true_loss_variance.append(result.get('true_loss_variance', np.inf))
 
         trial_params = {key: value[0] for key, value in trial['misc']['vals'].items()}
         trial_params = space_eval(xp_space, trial_params)
@@ -183,9 +193,49 @@ def plot(xp_name, xp_space, mongo_host=None, trials_pkl=None):
             param_value = trial_params[name]
             params[name].append(param_value)
 
-    pprint(loss)
-    pprint(true_loss)
-    pprint(params)
+    # --- loss & true loss ----------------------------------------------------
+    fig, ax = plt.subplots()
+
+    LABEL = '{subset} ({loss:.2f})'
+    label = LABEL.format(subset='dev', loss=np.min(loss))
+    ax.plot(np.minimum.accumulate(loss), label=label)
+    label = LABEL.format(subset='test', loss=np.min(true_loss))
+    ax.plot(np.minimum.accumulate(true_loss), label=label)
+
+    # axes, legend and title
+    ax.set_ylim(y_min, y_max)
+    ax.legend()
+    TITLE = '{xp_name} ({n:d} trials)'
+    ax.set_title(TITLE.format(xp_name=xp_name, n=len(loss)))
+
+    # save to file
+    TEMPLATE = '{output_dir}/{xp_name}.loss.pdf'
+    path = TEMPLATE.format(output_dir=output_dir, xp_name=xp_name)
+    fig.savefig(path)
+
+    # --- params --------------------------------------------------------------
+    for name in params:
+
+        try:
+            fig, ax = plt.subplots()
+
+            ax.plot(params[name], '.')
+            m, M = np.min(params[name]), np.max(params[name])
+            ax.set_ylim(m - 0.1 * (M-m), M + 0.1 * (M-m))
+
+            TITLE = '{xp_name} - {param}'
+            ax.set_title(TITLE.format(xp_name=xp_name, param=name))
+
+            # save to file
+            TEMPLATE = '{output_dir}/{xp_name}.{param}.pdf'
+            path = TEMPLATE.format(
+                output_dir=output_dir, xp_name=xp_name, param=name)
+            fig.savefig(path)
+
+        except Exception as e:
+            sys.stderr.write('Cannot plot "{param}" parameter.\n'.format(param=name))
+
+
 
 
 if __name__ == '__main__':
@@ -233,6 +283,10 @@ if __name__ == '__main__':
         reset(xp_name, mongo_host=mongo_host, trials_pkl=trials_pkl)
 
     if arguments['plot']:
-        plot(xp_name, xp_space,
+        y_min = float(arguments['--y-min'])
+        y_max = float(arguments['--y-max'])
+        output_dir = arguments['<output_dir>']
+        plot(output_dir, xp_name, xp_space,
+             y_min=y_min, y_max=y_max,
              mongo_host=mongo_host,
              trials_pkl=trials_pkl)
