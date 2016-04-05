@@ -228,25 +228,31 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
     # --- params --------------------------------------------------------------
     for name in params:
 
-        try:
-            fig, ax = plt.subplots()
+        fig, ax = plt.subplots()
 
+        try:
             ax.plot(params[name], '.')
             m, M = np.min(params[name]), np.max(params[name])
             ax.set_ylim(m - 0.1 * (M-m), M + 0.1 * (M-m))
 
-            TITLE = '{xp_name} - {param}'
-            ax.set_title(TITLE.format(xp_name=xp_name, param=name))
-
-            # save to file
-            TEMPLATE = '{output_dir}/{xp_name}.{param}.pdf'
-            path = TEMPLATE.format(
-                output_dir=output_dir, xp_name=xp_name, param=name)
-            fig.savefig(path)
-
         except Exception as e:
-            sys.stderr.write('Cannot plot "{param}" parameter.\n'.format(param=name))
 
+            unique, unique_indices, unique_inverse = np.unique(
+                params[name], return_index=True, return_inverse=True)
+            ax.plot(unique_inverse, '.')
+            m, M = np.min(unique_inverse), np.max(unique_inverse)
+            ax.set_yticks(range(len(unique)))
+            ax.set_yticklabels(unique)
+            ax.set_ylim(m - 0.5 * (M-m), M + 0.5 * (M-m))
+
+        TITLE = '{xp_name} - {param}'
+        ax.set_title(TITLE.format(xp_name=xp_name, param=name))
+        plt.tight_layout()
+        # save to file
+        TEMPLATE = '{output_dir}/{xp_name}.{param}.pdf'
+        path = TEMPLATE.format(
+            output_dir=output_dir, xp_name=xp_name, param=name)
+        fig.savefig(path)
 
 
 
