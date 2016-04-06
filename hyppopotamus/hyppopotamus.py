@@ -97,7 +97,7 @@ def best(xp_name, xp_space, mongo_host=None, trials_pkl=None):
         url = TEMPLATE.format(host=mongo_host, xp_name=xp_name)
         trials = hyperopt.mongoexp.MongoTrials(url)
 
-    print('#> BEST LOSS')
+    print('#> BEST LOSS (out of {n} trials)'.format(n=len(trials)))
     best = trials.best_trial
     result = dict(best['result'])
     result.pop('status')
