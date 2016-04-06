@@ -45,6 +45,7 @@ from docopt import docopt
 from pprint import pprint
 import numpy as np
 import sys
+from datetime import datetime
 
 
 def tune(xp_name, xp_space, xp_objective,
@@ -144,6 +145,22 @@ def reset(xp_name, mongo_host=None, trials_pkl=None):
         client.drop_database(xp_name)
         client.close()
 
+def key_func(trial):
+    """Key to use with `sorted`
+
+    Use it to sort trials in the following order:
+    - finished trials first, then running trials, then new trials
+    - within finished trials, sort by end time
+    - within running trials, sort by start time
+    - within new trials, sort by creation time
+    """
+
+    _order = {STATUS_OK: 1, STATUS_FAIL: 1,
+              STATUS_RUNNING: 2, STATUS_NEW: 3}
+    status_order = _order[trial['result']['status']]
+    refresh_time = trial['refresh_time']
+    refresh_time = datetime.now() if refresh_time is None else refresh_time
+    return status_order, refresh_time
 
 def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, trials_pkl=None):
 
@@ -151,10 +168,10 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
     matplotlib.use('pdf')
     from matplotlib import pyplot as plt
 
-    colors = {
-        STATUS_NEW: 'k',
-        STATUS_RUNNING: 'g',
-        STATUS_OK: 'b',
+    COLORS = {
+        STATUS_NEW: 'b',
+        STATUS_RUNNING: 'b',
+        STATUS_OK: 'g',
         STATUS_FAIL: 'r'}
 
     # --- load experiment trials ---------------------------------------------
@@ -172,23 +189,32 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
     params = {name: [] for name in trial['misc']['vals']}
 
     status = []
+    colors = []
     loss = []
     loss_variance = []
     true_loss = []
     true_loss_variance = []
 
-    for t, trial in enumerate(trials.trials):
+    # sort trials by (end_time, start_time)
+    trials = list(trials.trials)
+
+
+    trials = sorted(trials, key=key_func)
+
+    for t, trial in enumerate(trials):
 
         result = trial['result']
         status.append(result.get('status'))
-        loss.append(result.get('loss', np.inf))
-        true_loss.append(result.get('true_loss', np.inf))
-        loss_variance.append(result.get('loss_variance', np.inf))
-        true_loss_variance.append(result.get('true_loss_variance', np.inf))
+        colors.append(COLORS[status[-1]])
+
+        if 'loss' in result:
+            loss.append(result.get('loss'))
+            true_loss.append(result.get('true_loss'))
+            loss_variance.append(result.get('loss_variance'))
+            true_loss_variance.append(result.get('true_loss_variance'))
 
         trial_params = {key: value[0] for key, value in trial['misc']['vals'].items()}
         trial_params = space_eval(xp_space, trial_params)
-
         for name in params:
             param_value = trial_params[name]
             params[name].append(param_value)
@@ -231,15 +257,17 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
         fig, ax = plt.subplots()
 
         try:
-            ax.plot(params[name], '.')
+            ax.scatter(range(len(params[name])), params[name], s=50, lw=0, c=colors, marker=u'o')
             m, M = np.min(params[name]), np.max(params[name])
             ax.set_ylim(m - 0.1 * (M-m), M + 0.1 * (M-m))
 
         except Exception as e:
 
+            fig, ax = plt.subplots()
+
             unique, unique_indices, unique_inverse = np.unique(
                 params[name], return_index=True, return_inverse=True)
-            ax.plot(unique_inverse, '.')
+            ax.scatter(range(len(unique_inverse)), unique_inverse, s=50, alpha=0.5, lw=0, c=colors, marker=u'o')
             m, M = np.min(unique_inverse), np.max(unique_inverse)
             ax.set_yticks(range(len(unique)))
             ax.set_yticklabels(unique)
@@ -248,6 +276,7 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
         TITLE = '{xp_name} - {param}'
         ax.set_title(TITLE.format(xp_name=xp_name, param=name))
         plt.tight_layout()
+
         # save to file
         TEMPLATE = '{output_dir}/{xp_name}.{param}.pdf'
         path = TEMPLATE.format(
