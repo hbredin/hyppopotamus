@@ -98,7 +98,9 @@ def best(xp_name, xp_space, mongo_host=None, trials_pkl=None):
         url = TEMPLATE.format(host=mongo_host, xp_name=xp_name)
         trials = hyperopt.mongoexp.MongoTrials(url)
 
-    print('#> BEST LOSS (out of {n} trials)'.format(n=len(trials)))
+    n_trials = len([_ for t in trials.trials
+                      if t['result']['status'] == STATUS_OK])
+    print('#> BEST LOSS (out of {n} trials)'.format(n=n_trials))
     best = trials.best_trial
     result = dict(best['result'])
     for report in ['loss', 'loss_variance', 'true_loss', 'true_loss_variance']:
@@ -199,10 +201,7 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
     true_loss_variance = []
 
     # sort trials by (end_time, start_time)
-    trials = list(trials.trials)
-
-
-    trials = sorted(trials, key=key_func)
+    trials = sorted(trials.trials, key=key_func)
 
     for t, trial in enumerate(trials):
 
