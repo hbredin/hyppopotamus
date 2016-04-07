@@ -101,8 +101,11 @@ def best(xp_name, xp_space, mongo_host=None, trials_pkl=None):
     print('#> BEST LOSS (out of {n} trials)'.format(n=len(trials)))
     best = trials.best_trial
     result = dict(best['result'])
-    result.pop('status')
-    pprint(result)
+    for report in ['loss', 'loss_variance', 'true_loss', 'true_loss_variance']:
+        if report not in result:
+            continue
+        TEMPLATE = '{report}: {value:g}'
+        print(TEMPLATE.format(report=report, value=result[report]))
 
     print('#> BEST PARAMETERS')
     pprint(space_eval(xp_space, trials.argmin))
