@@ -177,6 +177,7 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
     import matplotlib
     matplotlib.use('pdf')
     from matplotlib import pyplot as plt
+    from matplotlib.dates import DayLocator, HourLocator, DateFormatter
 
     COLORS = {
         STATUS_NEW: 'b',
@@ -204,6 +205,7 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
     loss_variance = []
     true_loss = []
     true_loss_variance = []
+    time = []
 
     # sort trials by (end_time, start_time)
     trials = sorted(trials.trials, key=key_func)
@@ -219,6 +221,7 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
             true_loss.append(result.get('true_loss'))
             loss_variance.append(result.get('loss_variance'))
             true_loss_variance.append(result.get('true_loss_variance'))
+            time.append(trial['refresh_time'])
 
         trial_params = {key: value[0] for key, value in trial['misc']['vals'].items()}
         trial_params = space_eval(xp_space, trial_params)
@@ -233,7 +236,7 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
 
         LABEL = '{subset} ({loss:.3f})'
         label = LABEL.format(subset='dev', loss=np.min(loss))
-        ax.plot(np.minimum.accumulate(loss), label=label)
+        ax.plot_date(time, np.minimum.accumulate(loss), fmt='-', xdate=True, label=label)
 
         # compute (true) true loss, as the performance on the test
         # by the best performing system on the dev set
@@ -247,7 +250,16 @@ def plot(output_dir, xp_name, xp_space, y_min=0., y_max=1., mongo_host=None, tri
                 _true_loss.append(_true_loss[-1])
 
         label = LABEL.format(subset='test', loss=true_loss[np.argmin(loss)])
-        ax.plot(_true_loss, label=label)
+        ax.plot_date(time, _true_loss, fmt='-', xdate=True, label=label)
+
+        # years =    # every year
+        # months = MonthLocator()  # every month
+        # yearsFmt = DateFormatter('%Y-%M-%D')
+
+        ax.xaxis.set_major_locator(DayLocator())
+        ax.xaxis.set_major_formatter(DateFormatter('%Y/%m/%d'))
+        ax.xaxis.set_minor_locator(HourLocator())
+        ax.autoscale_view()
 
         # axes, legend and title
         ax.set_ylim(y_min, y_max)
