@@ -3,7 +3,7 @@
 
 # The MIT License (MIT)
 
-# Copyright (c) 2016 CNRS
+# Copyright (c) 2016-2017 CNRS
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,12 +38,11 @@ setup(
     cmdclass=versioneer.get_cmdclass(),
     install_requires=[
         'docopt >= 0.6.2',
-        'pymongo == 2.9.3',
-        'hyperopt == 0.0.3.dev0'
+        'hyperopt == 0.1'
     ],
     # PyPI
     name='hyppopotamus',
-    description=('hyperopt + SGE + luigi = <3'),
+    description=('hyper-parameter optimization'),
     author='Hervé Bredin',
     author_email='bredin@limsi.fr',
     url='http://herve.niderb.fr/',
@@ -53,6 +52,11 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
         "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.5",
         "Topic :: Scientific/Engineering"
     ],
+    entry_points = {
+        'console_scripts': [
+            'hyppopotamus=hyppopotamus.hyppopotamus:main']
+    },
 )

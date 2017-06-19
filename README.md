@@ -1,50 +1,61 @@
-# Hyper-parameter tuning
+# __hyppopotamus__ hyper-parameter optimization
 
-## On a SGE cluster
 
-#### Step 1 - Run MongoDB
+## Installation
 
+```bash
+$ pip install hyppopotamus
 ```
+
+## Usage
+
+
+### Experiment
+
+```bash
+$ cat /path/to/experiment.py
+
+# --- experiment unique identifier ------------------
+xp_name = 'sin'
+
+# --- hyper-parameters search space -----------------
+from hyperopt import hp
+xp_space = {'x': hp.uniform('x', -2, 2)}
+
+# --- objective function ----------------------------
+def xp_objective(args, **kwargs):
+    x = args['x']
+
+    import math
+    return math.sin(x)
+```
+
+### Hyper-parameter search
+
+```bash
+$ hyppopotamus tune /path/to/experiment.py
+```
+
+### (parallel) hyper-parameter search
+
+Run master:
+```bash
+$ ssh master
 $ mongod -v -f mongodb.conf
+$ export HOST=`hostname`
+$ hyppopotamus tune --parallel=master:27017 /path/to/experiment.py
 ```
 
 See file `mongodb.conf` for an example.
-Below, we assume that Mongo is ran on host `$MONGO_HOST`.
 
-
-#### Step 2 - Run Luigi server
-
-```
-luigid --background --pidfile <PATH_TO_PIDFILE> --logdir <PATH_TO_LOGDIR> --state-path <PATH_TO_STATEFILE>
+Run first worker,
+```bash
+$ ssh worker1
+$ hyppopotamus work --parallel=master:27017 /path/to/experiment.py
 ```
 
-#### Step 2 - Write experiment
-
-See file `test/experiment.py` for an example on optimizing `sin(x)`.
-
-Below, we assume that the file is `/absolute/path/to/experiment.py` and defines xp_name='sin'.
-
-
-#### Step 3 - Run master job
-
-This job is in charge of choosing the best set of hyper-parameters to evaluate.
-
+On worker 2:
+```bash
+$ ssh worker2
+$ hyppopotamus work --parallel=master:27017 /path/to/experiment.py
 ```
-qsub -V -b y \
-     `which python` /absolute/path/to/tune.py \
-     --mongo=$MONGO_HOST:27017 /absolute/path/to/experiment.py
-```
-
-#### Step 4 - Run worker jobs
-
-These jobs are in charge of evaluating hyper-parameters selected by master job.
-
-```
-$ export N_WORKERS=10  # number of workers
-$ cd $EXPERIMENT_DIRECTORY
-$ qsub -V -b y \
-       -t 1-$N_WORKERS \
-       `which hyperopt-mongo-worker` --mongo=$MONGO_HOST:27017/sin
-```
-
-Note how we use 'sin' (the name of the experiment) in --mongo option.
