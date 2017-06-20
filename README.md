@@ -58,3 +58,8 @@ On worker 2,
 $ ssh worker2
 $ hyppopotamus work --parallel=master:27017 /path/to/experiment.py
 ```
+
+## Changelogs
+
+### Version 0.1 (2017-06-17)
+* Initial release
