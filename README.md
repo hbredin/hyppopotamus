@@ -1,45 +1,65 @@
-# Hyper-parameter tuning
-
-## On a SGE cluster
-
-#### Step 1 - Run MongoDB
-
-```
-$ mongod -v -f ~/mongo/mongodb.conf
-```
-
-See file `mongodb.conf` for an example.
-
-Below, we assume that Mongo is ran on host `$MONGO_HOST`.
+# __hyppopotamus__ hyper-parameter optimization
 
 
-#### Step 2 - Write experiment 
+## Installation
 
-See file `test/experiment.py` for an example on optimizing `sin(x)`.
-
-Below, we assume that the file is `/absolute/path/to/experiment.py` and defines xp_name='sin'.
-
-
-#### Step 3 - Run master job
-
-This job is in charge of choosing the best set of hyper-parameters to evaluate.
-
-```
-qsub -V -b y \
-     `which python` /absolute/path/to/tune.py \
-     --mongo=$MONGO_HOST:27017 /absolute/path/to/experiment.py
+```bash
+$ pip install hyppopotamus
 ```
 
-#### Step 4 - Run worker jobs
+## Usage
 
-These jobs are in charge of evaluating hyper-parameters selected by master job.
 
+### Experiment
+
+```bash
+$ cat /path/to/experiment.py
+
+# --- experiment unique identifier ------------------
+xp_name = 'sin'
+
+# --- hyper-parameters search space -----------------
+from hyperopt import hp
+xp_space = {'x': hp.uniform('x', -2, 2)}
+
+# --- objective function ----------------------------
+def xp_objective(args, **kwargs):
+    x = args['x']
+
+    import math
+    return math.sin(x)
 ```
-$ export N_WORKERS=10  # number of workers
-$ cd $EXPERIMENT_DIRECTORY
-$ qsub -V -b y \
-       -t 1-$N_WORKERS \
-       `which hyperopt-mongo-worker` --mongo=$MONGO_HOST:27017/sin
+
+### Hyper-parameter search
+
+```bash
+$ hyppopotamus tune /path/to/experiment.py
 ```
 
-Note how we use 'sin' (the name of the experiment) in --mongo option.
+### (parallel) hyper-parameter search
+
+Run master:
+```bash
+$ ssh master
+$ mongod -v -f /path/to/mongodb.conf
+$ hyppopotamus tune --parallel=master:27017 /path/to/experiment.py
+```
+
+See file `examples/mongodb.conf` for an example.
+
+On worker1,
+```bash
+$ ssh worker1
+$ hyppopotamus work --parallel=master:27017 /path/to/experiment.py
+```
+
+On worker 2,
+```bash
+$ ssh worker2
+$ hyppopotamus work --parallel=master:27017 /path/to/experiment.py
+```
+
+## Changelogs
+
+### Version 0.1 (2017-06-17)
+* Initial release
