@@ -41,20 +41,19 @@ $ hyppopotamus tune /path/to/experiment.py
 Run master:
 ```bash
 $ ssh master
-$ mongod -v -f mongodb.conf
-$ export HOST=`hostname`
+$ mongod -v -f /path/to/mongodb.conf
 $ hyppopotamus tune --parallel=master:27017 /path/to/experiment.py
 ```
 
-See file `mongodb.conf` for an example.
+See file `examples/mongodb.conf` for an example.
 
-Run first worker,
+On worker1,
 ```bash
 $ ssh worker1
 $ hyppopotamus work --parallel=master:27017 /path/to/experiment.py
 ```
 
-On worker 2:
+On worker 2,
 ```bash
 $ ssh worker2
 $ hyppopotamus work --parallel=master:27017 /path/to/experiment.py
