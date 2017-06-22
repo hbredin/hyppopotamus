@@ -31,21 +31,32 @@
 Usage:
   hyppopotamus tune [--parallel=<host>] [--max-evals=<number>] <experiment.py>
   hyppopotamus work --parallel=<host> <experiment.py>
-  hyppopotamus best [--parallel=<host>] [--run] <experiment.py>
+  hyppopotamus best [--parallel=<host>] [--run [--subset=<subset>]] <experiment.py>
   hyppopotamus plot [options] [--parallel=<host>] <experiment.py> <output_dir>
   hyppopotamus reset [--parallel=<host>] <experiment.py>
   hyppopotamus (-h | --help)
   hyppopotamus --version
 
-Options:
+Common options:
   <experiment.py>           Path to experiment file.
-  --parallel=<host>         Parallel search using this MongoDB host.
-
+  --parallel=<host>         MongoDB host to use for parallel search
+                            (e.g. "localhost:27017").
   -h --help                 Show this screen.
   --version                 Show version.
   --verbose                 Show processing progress.
 
-  --max-evals=<number>      Allow up to this many evaluations [default: 100].
+"tune" mode:
+  --max-evals=<number>      Allow up to this many evaluations [default: 1000].
+
+"work" mode:
+
+
+"best" mode:
+  --run                     When provided, re-compute the value of the objective
+                            using the best set of hyper-parameters.
+  --subset=<subset>         When provided, pass additional `subset=<subset>`
+                            keyword argument to objective function.
+
 
 Plotting (plot):
   --y-min=<min>             [default: 0]
@@ -167,7 +178,7 @@ def work(experiment_py, host):
         # TODO log time when
 
 
-def best(experiment_py, host=None, run=False):
+def best(experiment_py, host=None, run=False, subset=None):
 
     trials = setup_trials(experiment_py, host=host)
 
@@ -195,7 +206,12 @@ def best(experiment_py, host=None, run=False):
     if run:
         params = {key: value[0] for key, value in best['misc']['vals'].items()}
         params = space_eval(xp_space, params)
-        pprint(xp_objective(params))
+
+        if subset is None:
+            result = xp_objective(params)
+        else:
+            result = xp_objective(params, subset=subset)
+        pprint(result)
 
 
 def reset(experiment_py, host=None):
@@ -375,7 +391,8 @@ def main():
 
     if arguments['best']:
         run = arguments['--run']
-        best(experiment_py, host=host, run=run)
+        subset = arguments['--subset']
+        best(experiment_py, host=host, run=run, subset=subset)
 
     if arguments['reset']:
         reset(experiment_py, host=host)
